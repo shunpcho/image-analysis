@@ -11,6 +11,8 @@ dependencies = [
     "torch>=2.10.0",
 ]
 
+[dependency-groups]
+dev = ["ipython>=9.10.1", "pytest>=9.0.2"]
 
 [build-system]
 requires = ["uv_build<=0.9.13"]
@@ -89,8 +91,3 @@ reportUnnecessaryComparison = "warning"
 reportUnnecessaryTypeIgnoreComment = "warning"
 reportUnknownMemberType = false
 reportMissingTypeStubs = false
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-]
