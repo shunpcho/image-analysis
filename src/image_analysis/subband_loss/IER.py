@@ -8,7 +8,8 @@ from image_analysis.subband_loss.filter import MultiScaleDogFilter
 # input, target: (B, C, H, W)
 
 
-SIGMA_SCALES = [0.6 * (2**i) for i in range(5)]
+SIGMA_SCALES = [0.6 * (2**i) for i in range(6)]
+# Example scales: [0.6, 1.2, 2.4, 4.8, 9.6, 19.2]
 
 
 class SFLLoss(nn.Module):
