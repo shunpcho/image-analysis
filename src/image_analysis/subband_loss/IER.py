@@ -1,5 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import torch
 from torch import nn
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from image_analysis.subband_loss.filter import MultiScaleDogFilter
 
@@ -13,12 +20,17 @@ SIGMA_SCALES = [0.6 * (2**i) for i in range(6)]
 
 
 class SFLLoss(nn.Module):
-    def __init__(self, scales: list[float] | None = None) -> None:
+    def __init__(
+        self,
+        scales: list[float] | None = None,
+        add_func: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] | None = None,
+    ) -> None:
         super().__init__()
         # Output MSE per subband
         self.L2loss_fn = nn.MSELoss(reduction="none")
         self.dog_bunk = MultiScaleDogFilter(scales=scales)
         self.scales = scales or SIGMA_SCALES
+        self.add_func = add_func
 
     def e_sfl(self, predicted: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """Compute the E_SFL between the denoised and noisy images."""
@@ -40,4 +52,6 @@ class SFLLoss(nn.Module):
         return e_l2.unsqueeze(1) / self.e_sfl(predicted, target)
 
     def forward(self, predicted: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        if self.add_func is not None:
+            return self.add_func(predicted, target) + self.sfl_loss(predicted, target)
         return self.sfl_loss(predicted, target)
