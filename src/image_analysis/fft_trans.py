@@ -5,6 +5,8 @@ import numpy.typing as npt
 from PIL import Image
 from scipy import ndimage
 
+SIGMA_SCALES = [0.6 * (2**i) for i in range(6)]
+
 
 class DoGSubbandFilter:
     """Class for creating subband images using Difference of Gaussian (DoG) filters."""
@@ -20,11 +22,11 @@ class DoGSubbandFilter:
             img: Input grayscale image as a 2D numpy array.
             sigma_list: List of sigma values for Gaussian filters.
                        DoG subbands are computed as differences between consecutive Gaussians.
-                       Default is [1.0, 2.0, 4.0, 8.0] which creates 3 DoG subbands plus
+                       Default is [0.6, 1.2, 2.4, 4.8, 9.6, 19.2] which creates 6 DoG subbands plus
                        the lowest frequency residual.
         """
         self.img = img
-        self.sigma_list = sigma_list or [1.0, 2.0, 4.0, 8.0]
+        self.sigma_list = sigma_list or SIGMA_SCALES
         self.gaussian_pyramid: list[npt.NDArray[np.float64]] = []
         self.dog_subbands: list[npt.NDArray[np.float64]] = []
 
@@ -47,9 +49,12 @@ class DoGSubbandFilter:
             raise ValueError(msg)
 
         self.dog_subbands = []
+        # First high-frequency band: difference between sigma[0] image and original image.
+        self.dog_subbands.append(self.gaussian_pyramid[0] - self.img)
         for i in range(len(self.gaussian_pyramid) - 1):
-            dog = self.gaussian_pyramid[i] - self.gaussian_pyramid[i + 1]
+            dog = self.gaussian_pyramid[i + 1] - self.gaussian_pyramid[i]
             self.dog_subbands.append(dog)
+        self.dog_subbands.append(self.gaussian_pyramid[-1])
 
     def process(self) -> None:
         """Execute the complete DoG filtering process."""
@@ -142,18 +147,21 @@ class DoGImageSaver:
             sigma_list: List of sigma values used for Gaussian filters
         """
         for idx, dog_img in enumerate(dog_subbands):
+            if idx == 0:
+                suffix = f"sigma_{sigma_list[0]:.1f}-original"
+            elif idx < len(sigma_list):
+                suffix = f"sigma_{sigma_list[idx]:.1f}-{sigma_list[idx - 1]:.1f}"
+            else:
+                suffix = f"sigma_{sigma_list[-1]:.1f}"
+
             # Save normalized DoG (with sign information)
             img_normalized = self.normalize_image(dog_img)
-            Image.fromarray(img_normalized).save(
-                self.output_dir / f"dog_subband_{idx}_sigma_{sigma_list[idx]:.1f}-{sigma_list[idx + 1]:.1f}.png"
-            )
+            Image.fromarray(img_normalized).save(self.output_dir / f"dog_subband_{idx}_{suffix}.png")
 
             # Save FFT magnitude spectrum
             fft_magnitude = self.compute_fft_magnitude(dog_img)
             magnitude_normalized = self.normalize_spectrum(fft_magnitude)
-            Image.fromarray(magnitude_normalized).save(
-                self.output_dir / f"dog_fft_magnitude_{idx}_sigma_{sigma_list[idx]:.1f}-{sigma_list[idx + 1]:.1f}.png"
-            )
+            Image.fromarray(magnitude_normalized).save(self.output_dir / f"dog_fft_magnitude_{idx}_{suffix}.png")
 
     def save_residual(
         self,
@@ -185,12 +193,12 @@ class DoGPipeline:
             image_path: Path to the input image
             sigma_list: List of sigma values for Gaussian filters.
                        DoG subbands are computed as differences between consecutive Gaussians.
-                       Default is [1.0, 2.0, 4.0, 8.0] which creates 3 DoG subbands plus
+                       Default is [0.6, 1.2, 2.4, 4.8, 9.6, 19.2] which creates 6 DoG subbands plus
                        the lowest frequency residual.
             output_dir: Directory to save output images
         """
         self.image_path = Path(image_path)
-        self.sigma_list = sigma_list or [1.0, 2.0, 4.0, 8.0]
+        self.sigma_list = sigma_list or SIGMA_SCALES
         self.output_dir = Path(output_dir)
         self.dog_filter: DoGSubbandFilter | None = None
 
@@ -224,7 +232,7 @@ class DoGPipeline:
 
 
 if __name__ == "__main__":
-    image_path = "path/to/your/image.jpg"
+    image_path = "/home/s.chochi/denoiser/data/CC15/5dmark3_iso3200_1_mean.png"
 
     # Example 1: Default 4 sigma values (creates 3 DoG subbands)
     # pipeline = DoGPipeline(image_path)
