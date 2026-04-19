@@ -1,7 +1,7 @@
 import torch
 
+from image_analysis.subband_loss.calculate_ier import SFLLoss
 from image_analysis.subband_loss.filter import MultiScaleDogFilter
-from image_analysis.subband_loss.IER import SFLLoss
 
 
 def test_multiscale_dog_filter_forward_shape() -> None:

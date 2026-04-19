@@ -4,8 +4,8 @@ import numpy as np
 import torch
 from PIL import Image
 
+from image_analysis.subband_loss.calculate_ier import SFLLoss
 from image_analysis.subband_loss.filter import MultiScaleDogFilter
-from image_analysis.subband_loss.IER import SFLLoss
 
 
 def _format_subband_label(index: int, sigma_list: list[float]) -> str:
