@@ -1,0 +1,42 @@
+name: Test CI
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**/*.py'
+      - 'tests/**/*.py'
+      - pyproject.toml
+      -uv.lock
+    pull_request:
+      branches: [main, master]
+      paths:
+        - "src/**/*.py"
+        - "tests/**/*.py"
+        - pyproject.toml
+        -uv.lock
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      
+      - name: Install UV
+        uses: astral-sh/uv-action@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          version: "0.8.3"
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: "pyproject.toml"
+      
+      - name: Install dependencies
+        run: uv sync --group tests
+
+      - name: Run tests
+        run: uv run pytest tests
